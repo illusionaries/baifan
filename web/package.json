@@ -17,7 +17,6 @@
     "@elysia/eden": "^1.4.10",
     "@vitejs/plugin-vue": "^6.0.11",
     "elysia": "^1.4.32",
-    "unocss": "^66.13.0",
     "vite": "^8.4.0",
     "vue-tsc": "^3.3.14"
   }
