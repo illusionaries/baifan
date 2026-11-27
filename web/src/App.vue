@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { Report } from '../../server/src/types'
+import type { Report, ReportResponse } from '../../server/src/types'
 import { api } from './api'
 import EntryForm from './components/EntryForm.vue'
 import ReportView from './components/ReportView.vue'
-import { loadCreds, saveCreds, type StoredCreds } from './storage'
+import { loadCreds, saveCreds, type EntryPayload, type StoredCreds } from './storage'
 
 const INSPIRED = {
   name: 'KingRayCao/PKU-Annual-Eat',
@@ -15,6 +15,7 @@ const creds = ref(loadCreds())
 const report = ref<Report | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const errorCode = ref<string | null>(null)
 
 function readMessage(value: unknown): string {
   if (typeof value === 'string') return value
@@ -25,26 +26,65 @@ function readMessage(value: unknown): string {
   return '请求失败，请检查凭据后重试。'
 }
 
-async function run(payload: StoredCreds) {
+function readCode(value: unknown): string | null {
+  if (value && typeof value === 'object') {
+    const code = (value as { code?: unknown }).code
+    if (typeof code === 'string') return code
+  }
+  return null
+}
+
+async function run(payload: EntryPayload) {
   loading.value = true
   error.value = null
+  errorCode.value = null
 
   try {
-    const { data, error: failure } = await api.api.report.cookie.post(payload)
-    if (failure) {
-      error.value = readMessage(failure.value)
+    const res =
+      payload.mode === 'iaaa'
+        ? await api.api.report.iaaa.post({
+            username: payload.username,
+            password: payload.password,
+            otp: payload.otp,
+            year: payload.year,
+          })
+        : await api.api.report.cookie.post({
+            hallticket: payload.hallticket,
+            account: payload.account,
+            year: payload.year,
+          })
+
+    if (res.error) {
+      error.value = readMessage(res.error.value)
+      errorCode.value = readCode(res.error.value)
       report.value = null
       return
     }
-    report.value = data as Report
-    saveCreds(payload)
-    creds.value = payload
+
+    // 两条路都回带 session：password 从不落盘，之后统一用 hallticket
+    const data = res.data as ReportResponse
+    report.value = data
+    creds.value = {
+      mode: 'cookie',
+      account: data.session.account,
+      hallticket: data.session.hallticket,
+      username: payload.mode === 'iaaa' ? payload.username : creds.value.username,
+      year: payload.year,
+    }
+    saveCreds(creds.value)
   } catch (err) {
     error.value = `连不上本机 API：${(err as Error).message}。先运行 bun run dev。`
     report.value = null
   } finally {
     loading.value = false
   }
+}
+
+/** 换年份：复用已存下的 account + hallticket，不必重新登录 */
+function changeYear(year: number) {
+  const { account, hallticket } = creds.value
+  if (!hallticket) return
+  run({ mode: 'cookie', account, hallticket, year })
 }
 </script>
 
@@ -55,9 +95,9 @@ async function run(payload: StoredCreds) {
       :report="report"
       :loading="loading"
       @reset="((report = null), (error = null))"
-      @change-year="run({ ...creds, year: $event })"
+      @change-year="changeYear"
     />
-    <EntryForm v-else :initial="creds" :loading="loading" :error="error" @submit="run" />
+    <EntryForm v-else :initial="creds" :loading="loading" :error="error" :error-code="errorCode" @submit="run" />
 
     <footer class="site-foot mono">
       <a href="https://github.com/illusionaries/baifan" target="_blank" rel="noopener noreferrer">

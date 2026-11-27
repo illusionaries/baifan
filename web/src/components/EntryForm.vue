@@ -1,28 +1,72 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import type { StoredCreds } from '../storage'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import type { EntryPayload, LoginMode, StoredCreds } from '../storage'
 
-const props = defineProps<{ initial: StoredCreds; loading: boolean; error: string | null }>()
-const emit = defineEmits<{ submit: [StoredCreds] }>()
+const props = defineProps<{
+  initial: StoredCreds
+  loading: boolean
+  error: string | null
+  errorCode: string | null
+}>()
+const emit = defineEmits<{ submit: [EntryPayload] }>()
 
+const mode = ref<LoginMode>(props.initial.mode)
 const hallticket = ref(props.initial.hallticket)
+const username = ref(props.initial.username)
+const password = ref('')
+const otp = ref('')
 const year = ref(props.initial.year)
 const localError = ref('')
+const otpNeeded = ref(false)
+const otpEl = useTemplateRef<HTMLInputElement>('otpEl')
 
 const thisYear = new Date().getFullYear()
 const years = Array.from({ length: 11 }, (_, i) => thisYear - i)
 const shownError = computed(() => localError.value || props.error)
 
-function onSubmit() {
-  const ticket = hallticket.value.trim()
+// 只有后端说需要令牌时才把这一格露出来，并直接聚焦
+watch(
+  () => props.errorCode,
+  async (code) => {
+    if (code !== 'otp-required') return
+    otpNeeded.value = true
+    await nextTick()
+    otpEl.value?.focus()
+  },
+)
 
-  if (!/^[0-9A-Za-z_-]{8,128}$/.test(ticket)) {
-    localError.value = 'hallticket 格式不对，应为 8–128 位字母数字。'
+function onSubmit() {
+  const y = year.value
+
+  if (mode.value === 'cookie') {
+    const ticket = hallticket.value.trim()
+    if (!/^[0-9A-Za-z_-]{8,128}$/.test(ticket)) {
+      localError.value = 'hallticket 格式不对，应为 8–128 位字母数字。'
+      return
+    }
+    localError.value = ''
+    emit('submit', { mode: 'cookie', hallticket: ticket, year: y })
     return
   }
 
+  const user = username.value.trim()
+  // 只有服务端确认要令牌时才带 otp，UI 上残留的值不外发
+  const code = otpNeeded.value ? otp.value.trim() : ''
+  if (!user) {
+    localError.value = '请填写学号。'
+    return
+  }
+  if (!password.value) {
+    localError.value = '请填写 IAAA 密码。'
+    return
+  }
+  // 手机令牌固定 6 位，不填表示账号没绑
+  if (code && !/^\d{6}$/.test(code)) {
+    localError.value = '手机令牌应为 6 位数字。'
+    return
+  }
   localError.value = ''
-  emit('submit', { hallticket: ticket, year: year.value })
+  emit('submit', { mode: 'iaaa', username: user, password: password.value, otp: code || undefined, year: y })
 }
 </script>
 
@@ -42,7 +86,30 @@ function onSubmit() {
 
     <form class="panel" @submit.prevent="onSubmit">
       <div class="fields">
-        <label class="field">
+        <div class="tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="tab mono"
+            :class="{ on: mode === 'cookie' }"
+            :aria-selected="mode === 'cookie'"
+            @click="mode = 'cookie'"
+          >
+            HALLTICKET
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="tab"
+            :class="{ on: mode === 'iaaa' }"
+            :aria-selected="mode === 'iaaa'"
+            @click="mode = 'iaaa'"
+          >
+            IAAA 登录
+          </button>
+        </div>
+
+        <label v-if="mode === 'cookie'" class="field">
           <span class="label">hallticket</span>
           <input
             v-model.trim="hallticket"
@@ -52,6 +119,45 @@ function onSubmit() {
             placeholder="个人中心 Cookie 中的 hallticket"
           />
         </label>
+
+        <template v-else>
+          <label class="field">
+            <span class="label">学号</span>
+            <input
+              v-model.trim="username"
+              name="username"
+              autocomplete="username"
+              inputmode="numeric"
+              spellcheck="false"
+              placeholder="IAAA 账号（学号 / 职工号）"
+            />
+          </label>
+
+          <label class="field">
+            <span class="label">密码</span>
+            <input
+              v-model="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="IAAA 密码"
+            />
+          </label>
+
+          <label v-if="otpNeeded" class="field">
+            <span class="label">手机令牌</span>
+            <input
+              ref="otpEl"
+              v-model.trim="otp"
+              name="otp"
+              inputmode="numeric"
+              maxlength="6"
+              autocomplete="one-time-code"
+              spellcheck="false"
+              placeholder="6 位动态码"
+            />
+          </label>
+        </template>
 
         <label class="field">
           <span class="label">统计年度</span>
@@ -68,7 +174,12 @@ function onSubmit() {
       <div class="panel-foot">
         <p v-if="shownError" class="error">{{ shownError }}</p>
 
-        <details class="how">
+        <p v-if="mode === 'iaaa'" class="note">
+          受限于 IAAA 速率限制，如果可能，请尽量使用 <span class="mono">hallticket</span> 方式。<br />
+          IAAA 登录后会在本机缓存 <span class="mono">hallticket</span>，下次可直接用它登录。
+        </p>
+
+        <details v-if="mode === 'cookie'" class="how">
           <summary class="label">hallticket 在哪？</summary>
           <ol>
             <li>
@@ -78,7 +189,7 @@ function onSubmit() {
               </a>
               &nbsp;登录。
             </li>
-            <li>F12 打开 DevTools → <b>Network</b>，刷新页面，点开 <b class="mono">GetCardInfoByAccountNoParm</b>。</li>
+            <li>F12 打开 <b>DevTools → Network</b>，刷新页面，点开 <b class="mono">GetCardInfoByAccountNoParm</b>。</li>
             <li>Request Headers 的 Cookie 里复制 <b class="mono">hallticket</b> 的值。</li>
           </ol>
         </details>
@@ -136,6 +247,40 @@ function onSubmit() {
   background: var(--panel);
 }
 
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+}
+
+.tab {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 8px 9px;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    background 0.1s linear,
+    color 0.1s linear;
+}
+
+.tab + .tab {
+  border-left: 1px solid var(--line);
+}
+
+.tab:hover:not(.on) {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+.tab.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .fields {
   grid-row: 2;
   display: flex;
@@ -157,6 +302,15 @@ function onSubmit() {
 .submit {
   margin-top: 4px;
   text-align: left;
+}
+
+.note {
+  border-top: 1px solid var(--hair);
+  padding-top: 14px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  text-wrap: pretty;
 }
 
 .how {

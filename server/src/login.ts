@@ -8,8 +8,9 @@
  *      （IAS = 校园卡自己的“统一身份认证管理平台”）
  *   3. IAS 返回一个自动提交的表单：`https://iaaa.pku.edu.cn/iaaa/oauth.jsp`
  *      `appID=card_auth`、`redirectUrl=http://sfrzcard.pku.edu.cn/ias/prelogin?sysid=WXXY`
- *   4. IAAA 登录页用 `getPublicKey.do` 的 RSA 公钥加密密码，POST `oauthlogin.do`
- *      换 token；成功后浏览器跳到 `redirectUrl&rand=…&token=…`
+ *   4. 先查 `isMobileAuthen.do` 确认账号要不要手机令牌，再用 `getPublicKey.do` 的
+ *      RSA 公钥加密密码 POST `oauthlogin.do` 换 token；浏览器随后跳到
+ *      `redirectUrl&rand=…&token=…`
  *   5. IAS 校验 token 后返回一页自动提交表单（`errorcode` / `continueurl` /
  *      `ssoticketid`），POST 到 `cassyno/index`；校园卡据此下发 `hallticket` Cookie
  *
@@ -157,6 +158,27 @@ function toLoginError(err: IaaaError | undefined): LoginError {
   return new LoginError('invalid-credentials', msg, detail)
 }
 
+/**
+ * 账号是否需要手机令牌。
+ *
+ * `oauthlogin.do` 对「密码错」和「缺令牌」回同一个 E01，只能先问
+ * `isMobileAuthen.do`（pku3b 也是先查再登录，避免多发一次失败登录触发 IP 限频）。
+ */
+async function mobileAuthRequired(username: string, jar: CookieJar): Promise<boolean> {
+  const url = `${IAAA_BASE}/isMobileAuthen.do?appId=${APP_ID}&userName=${encodeURIComponent(
+    username,
+  )}&_rand=${Math.random()}`
+  try {
+    const res = await request(jar, url, { headers: { accept: 'application/json' } })
+    if (res.status !== 200) return false
+    const json = (await res.json()) as { success?: boolean; isMobileAuthen?: boolean; authenMode?: string }
+    if (json.success !== true) return false
+    return json.isMobileAuthen === true || json.authenMode === 'OTP'
+  } catch {
+    return false
+  }
+}
+
 async function iaaaToken({ username, password, otp }: LoginArgs): Promise<string> {
   const otpCode = otp?.trim() ?? ''
   if (otpCode && !/^\d{6}$/.test(otpCode)) {
@@ -164,6 +186,11 @@ async function iaaaToken({ username, password, otp }: LoginArgs): Promise<string
   }
 
   const jar = new CookieJar()
+
+  // 先确认要不要令牌：需要而没给，直接返回，不必白跑一次密码校验
+  if (!otpCode && (await mobileAuthRequired(username, jar))) {
+    throw new LoginError('otp-required', '该账号需要手机令牌，请输入 6 位动态码')
+  }
 
   const keyRes = await request(jar, IAAA_PUBKEY, { headers: { accept: 'application/json' } })
   if (keyRes.status !== 200) throw new LoginError('upstream-unavailable', `IAAA 公钥接口返回 HTTP ${keyRes.status}`)

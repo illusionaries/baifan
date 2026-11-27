@@ -3,6 +3,7 @@ import { Elysia, t } from 'elysia'
 import { computeReport, yearRange } from './analytics'
 import { CardError, fetchRows } from './card'
 import { LoginError, fetchAccount, loginWithIaaa } from './login'
+import type { ReportResponse } from './types'
 
 type FailStatus = 400 | 401 | 403 | 429 | 500 | 502
 
@@ -32,11 +33,11 @@ function toFailure(err: unknown): Failure {
   return { status: 500, body: { code: 'internal', message: '生成报告失败，请稍后重试' } }
 }
 
-/** 拿到 (account, hallticket, year) 之后的共同流程 */
-async function buildReport(account: string, hallticket: string, year: number) {
+/** 拿到 (account, hallticket, year) 之后的共同流程；session 回带给前端复用 */
+async function buildReport(account: string, hallticket: string, year: number): Promise<ReportResponse> {
   const { from, to } = yearRange(year)
   const rows = await fetchRows({ account, hallticket, from, to })
-  return computeReport({ account, year, from, to, rows })
+  return { ...computeReport({ account, year, from, to, rows }), session: { account, hallticket } }
 }
 
 export const app = new Elysia()

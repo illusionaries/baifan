@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import type { Report } from '../../../server/src/types'
 import { exportNodeToPng } from '../export'
 import { WEEKDAYS, money, pct } from '../format'
@@ -15,7 +15,7 @@ const emit = defineEmits<{ reset: []; 'change-year': [number] }>()
 const thisYear = new Date().getFullYear()
 const years = Array.from({ length: 11 }, (_, i) => thisYear - i)
 
-const sheet = ref<HTMLElement | null>(null)
+const sheet = useTemplateRef<HTMLElement>('sheet')
 const exporting = ref(false)
 const exportError = ref('')
 

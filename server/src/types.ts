@@ -107,3 +107,11 @@ export interface Report {
   transactions: Txn[]
   insights: Insight[]
 }
+
+/** 报告接口的响应：报告本体 + 本次会话凭据，前端存下来换年份不用重新登录 */
+export interface ReportResponse extends Report {
+  session: {
+    account: string
+    hallticket: string
+  }
+}

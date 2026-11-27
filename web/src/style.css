@@ -212,9 +212,9 @@ a {
 }
 
 .error {
-  border-left: 3px solid var(--accent);
   padding: 8px 10px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--accent);
+  color: var(--paper);
   font-size: 12px;
   line-height: 1.5;
 }
