@@ -30,14 +30,16 @@ const geom = computed(() => {
   const { start, ms } = span.value
 
   const x = (t: number) => Math.min(1000, Math.max(0, ((t - start) / ms) * 1000))
-  const y = (v: number) => 148 - ((v - min) / scale) * 126
+  // 基线压到 viewBox 底边，和填色、坐标轴对齐
+  const y = (v: number) => 160 - ((v - min) / scale) * 138
 
   // 余额是阶梯函数：没刷卡就不变，所以水平段 + 垂直跳变，而不是直线插值
   let line = `M0,${y(pts[0]!.value).toFixed(1)}`
   for (const p of pts) line += `H${x(timeOf(p.time)).toFixed(1)}V${y(p.value).toFixed(1)}`
   line += 'H1000'
 
-  return { line, area: `${line} L1000,148 L0,148 Z`, min, max, y, start, ms }
+  // 填色铺到 viewBox 底边（.plot 的 border-bottom 就是轴），折线最低点也落在同一条线上
+  return { line, area: `${line} L1000,160 L0,160 Z`, min, max, y, start, ms }
 })
 
 /** 每月一号的刻度，按真实时间定位 */
@@ -113,12 +115,12 @@ const activeY = computed(() => (hover.value && geom.value ? (geom.value.y(hover.
     <div v-else class="empty label">余额数据不足</div>
 
     <div v-if="geom" class="axis">
-      <span v-for="t in ticks" :key="t.month" class="tick mono" :style="{ left: `${t.left}%` }">{{ t.month }}</span>
+      <span v-for="t in ticks" :key="t.month" class="tick mono" :style="{ left: `${t.left}%` }">{{ t.month }}月</span>
     </div>
 
     <div v-if="geom" class="scale mono">
-      <span>高 ¥{{ money(geom.max) }}</span>
-      <span>低 ¥{{ money(geom.min) }}</span>
+      <span>最富有时 ¥{{ money(geom.max) }}</span>
+      <span>最贫穷时 ¥{{ money(geom.min) }}</span>
     </div>
   </div>
 </template>

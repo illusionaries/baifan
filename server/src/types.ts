@@ -6,8 +6,8 @@ export interface Txn {
   merchant: string
   /** 消费金额，正数（元） */
   amount: number
-  /** 交易后卡余额（元） */
-  balance: number
+  /** 交易后卡余额（元）；上游缺失为 null */
+  balance: number | null
 }
 
 export interface MerchantStat {

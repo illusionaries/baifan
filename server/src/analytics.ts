@@ -28,7 +28,8 @@ interface Parsed {
   out: number
   /** 存入，分 */
   income: number
-  balance: number
+  /** 交易后余额（元）；上游没给就是 null，别当成 0 */
+  balance: number | null
 }
 
 const TIME_RE = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/
@@ -43,7 +44,8 @@ function parseRow(row: RawRow): Parsed | null {
   if (!Number.isFinite(raw)) return null
 
   const cents = Math.round(Math.abs(raw) * 100)
-  const balance = Number(row.CARDBAL)
+  const rawBalance = row.CARDBAL
+  const balance = rawBalance === '' || rawBalance === null || rawBalance === undefined ? Number.NaN : Number(rawBalance)
 
   return {
     time,
@@ -57,7 +59,7 @@ function parseRow(row: RawRow): Parsed | null {
         .trim() || '未知窗口',
     out: raw < 0 ? cents : 0,
     income: raw > 0 ? cents : 0,
-    balance: Number.isFinite(balance) ? balance : 0,
+    balance: Number.isFinite(balance) ? balance : null,
   }
 }
 
@@ -197,11 +199,17 @@ export function computeReport({ account, year, from, to, rows }: ComputeArgs): R
       balance: t.balance,
     }))
 
-  // —— 余额曲线（稀疏采样）——
-  const STEP = Math.max(1, Math.ceil(sortedAsc.length / 360))
-  const balance = sortedAsc
-    .filter((_, i) => i % STEP === 0 || i === sortedAsc.length - 1)
-    .map((t) => ({ time: t.time, value: t.balance }))
+  // —— 余额曲线（按天取样）——
+  // 只取真实资金变动、且上游给了余额的行：像「系统自动变更常用介质」这种
+  // 0 元记录 CARDBAL 是 0，混进来会让曲线凭空掉到 0。
+  // 每天取最后一笔：按序号抽样会把「充值」这种单点事件抽掉，上升就被挪到
+  // 下一笔消费那天，画出来像一根尖刺。
+  const balanceRows = sortedAsc.filter(
+    (t): t is Parsed & { balance: number } => (t.out > 0 || t.income > 0) && t.balance !== null,
+  )
+  const lastOfDay = new Map<string, Parsed & { balance: number }>()
+  for (const t of balanceRows) lastOfDay.set(t.date, t) // 已按时间升序，最后写入即当天末笔
+  const balance = [...lastOfDay.values()].map((t) => ({ time: t.time, value: t.balance }))
 
   // —— 汇总 ——
   const maxTxn = spendTxns.reduce<Parsed | null>((best, t) => (!best || t.out > best.out ? t : best), null)

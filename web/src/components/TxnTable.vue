@@ -31,7 +31,7 @@ const incomeCount = computed(() => props.rows.filter((r) => r.amount > 0).length
           </td>
           <td class="c-name">{{ r.merchant }}</td>
           <td class="mono c-amt">{{ r.amount < 0 ? `−${money(-r.amount)}` : `+${money(r.amount)}` }}</td>
-          <td class="mono c-bal">{{ money(r.balance) }}</td>
+          <td class="mono c-bal">{{ r.balance === null ? '—' : money(r.balance) }}</td>
         </tr>
       </tbody>
     </table>
