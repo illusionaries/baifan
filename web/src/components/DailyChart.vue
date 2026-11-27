@@ -160,8 +160,6 @@ function onMove(event: MouseEvent) {
   color: var(--muted);
 }
 
-
-
 .plot {
   position: relative;
   margin-top: 8px;

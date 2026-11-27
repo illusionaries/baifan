@@ -10,10 +10,13 @@
     "dev": "bun run --parallel --workspaces dev",
     "build": "bun run --parallel --workspaces build",
     "start": "./dist/baifan-eat",
-    "typecheck": "bun run --workspaces typecheck"
+    "typecheck": "bun run --workspaces typecheck",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check ."
   },
   "devDependencies": {
     "@types/bun": "^1.3.0",
+    "prettier": "^3.10.1",
     "typescript": "^5.9.3"
   }
 }

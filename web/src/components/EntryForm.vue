@@ -35,7 +35,6 @@ function onSubmit() {
 <template>
   <div class="entry">
     <section class="intro">
-
       <div class="headline">
         <h1 class="display">
           白鲸大学

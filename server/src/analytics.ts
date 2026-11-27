@@ -51,7 +51,10 @@ function parseRow(row: RawRow): Parsed | null {
     month: Number(mo),
     hour: Number(h),
     weekday: (new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d))).getUTCDay() + 6) % 7,
-    merchant: String(row.MERCNAME ?? '').replace(/\s+/g, ' ').trim() || '未知窗口',
+    merchant:
+      String(row.MERCNAME ?? '')
+        .replace(/\s+/g, ' ')
+        .trim() || '未知窗口',
     out: raw < 0 ? cents : 0,
     income: raw > 0 ? cents : 0,
     balance: Number.isFinite(balance) ? balance : 0,

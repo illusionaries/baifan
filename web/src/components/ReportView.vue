@@ -68,9 +68,7 @@ const tickets = computed(() =>
     <section class="hero">
       <div>
         <p class="label">全年总支出 / TOTAL SPEND</p>
-        <p class="amount">
-          <span class="cur">¥</span>{{ money(s.spend) }}
-        </p>
+        <p class="amount"><span class="cur">¥</span>{{ money(s.spend) }}</p>
         <p class="hero-note">
           <b>{{ s.spendCount }}</b> 笔消费 · <b>{{ s.merchantCount }}</b> 个窗口 · <b>{{ s.activeDays }}</b> 天有记录
           <span class="sep">|</span>
@@ -228,7 +226,6 @@ const tickets = computed(() =>
           <h2>卡内余额</h2>
         </div>
         <BalanceChart :points="report.balance" :from="report.meta.from" :to="report.meta.to" />
-
       </section>
     </div>
 
@@ -239,7 +236,6 @@ const tickets = computed(() =>
       </div>
       <TxnTable :rows="report.transactions" />
     </section>
-
   </article>
 </template>
 
@@ -390,7 +386,9 @@ const tickets = computed(() =>
   background: transparent;
   font-size: 11px;
   cursor: pointer;
-  transition: background 0.1s linear, color 0.1s linear;
+  transition:
+    background 0.1s linear,
+    color 0.1s linear;
 }
 
 .years button + button {
@@ -721,8 +719,6 @@ const tickets = computed(() =>
   text-align: right;
   color: var(--muted);
 }
-
-
 
 @media (max-width: 980px) {
   .cols-a,
