@@ -30,7 +30,7 @@ async function run(payload: StoredCreds) {
   error.value = null
 
   try {
-    const { data, error: failure } = await api.api.report.post(payload)
+    const { data, error: failure } = await api.api.report.cookie.post(payload)
     if (failure) {
       error.value = readMessage(failure.value)
       report.value = null

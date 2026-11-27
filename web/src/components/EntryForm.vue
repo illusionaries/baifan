@@ -5,7 +5,6 @@ import type { StoredCreds } from '../storage'
 const props = defineProps<{ initial: StoredCreds; loading: boolean; error: string | null }>()
 const emit = defineEmits<{ submit: [StoredCreds] }>()
 
-const account = ref(props.initial.account)
 const hallticket = ref(props.initial.hallticket)
 const year = ref(props.initial.year)
 const localError = ref('')
@@ -15,20 +14,15 @@ const years = Array.from({ length: 11 }, (_, i) => thisYear - i)
 const shownError = computed(() => localError.value || props.error)
 
 function onSubmit() {
-  const acct = account.value.trim()
   const ticket = hallticket.value.trim()
 
-  if (!/^\d{4,24}$/.test(acct)) {
-    localError.value = '账号应为 4–24 位数字。'
-    return
-  }
   if (!/^[0-9A-Za-z_-]{8,128}$/.test(ticket)) {
     localError.value = 'hallticket 格式不对，应为 8–128 位字母数字。'
     return
   }
 
   localError.value = ''
-  emit('submit', { account: acct, hallticket: ticket, year: year.value })
+  emit('submit', { hallticket: ticket, year: year.value })
 }
 </script>
 
@@ -48,18 +42,6 @@ function onSubmit() {
 
     <form class="panel" @submit.prevent="onSubmit">
       <div class="fields">
-        <label class="field">
-          <span class="label">账号</span>
-          <input
-            v-model.trim="account"
-            name="account"
-            inputmode="numeric"
-            autocomplete="username"
-            spellcheck="false"
-            placeholder="账号管理里的「账号」"
-          />
-        </label>
-
         <label class="field">
           <span class="label">hallticket</span>
           <input
@@ -87,14 +69,14 @@ function onSubmit() {
         <p v-if="shownError" class="error">{{ shownError }}</p>
 
         <details class="how">
-          <summary class="label">账号和 hallticket 在哪？</summary>
+          <summary class="label">hallticket 在哪？</summary>
           <ol>
             <li>
               打开
               <a class="link" href="https://card.pku.edu.cn" target="_blank" rel="noopener noreferrer">
                 card.pku.edu.cn ↗
               </a>
-              登录，在「账号管理」里复制<b>账号</b>。
+              &nbsp;登录。
             </li>
             <li>F12 打开 DevTools → <b>Network</b>，刷新页面，点开 <b class="mono">GetCardInfoByAccountNoParm</b>。</li>
             <li>Request Headers 的 Cookie 里复制 <b class="mono">hallticket</b> 的值。</li>
