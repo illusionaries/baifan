@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "baifan-eat",
+      "name": "baifan-server",
       "devDependencies": {
         "@types/bun": "^1.3.0",
         "prettier": "^3.10.1",

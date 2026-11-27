@@ -15,7 +15,7 @@ export type EntryPayload =
   | { mode: 'cookie'; hallticket: string; account?: string; year: number }
   | { mode: 'iaaa'; username: string; password: string; otp?: string; year: number }
 
-const KEY = 'baifan-eat.creds'
+const KEY = 'baifan.creds'
 
 export function loadCreds(): StoredCreds {
   const fallback: StoredCreds = {

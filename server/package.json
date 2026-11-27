@@ -6,7 +6,7 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "bun build --compile --minify --outfile ../dist/baifan-eat src/index.ts"
+    "build": "bun build --compile --minify --outfile ../dist/baifan-server src/index.ts"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.3",

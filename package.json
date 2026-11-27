@@ -1,5 +1,5 @@
 {
-  "name": "baifan-eat",
+  "name": "baifan-server",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "bun run --parallel --workspaces dev",
     "build": "bun run --parallel --workspaces build",
-    "start": "./dist/baifan-eat",
+    "start": "./dist/baifan-server",
     "typecheck": "bun run --workspaces typecheck",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check ."
