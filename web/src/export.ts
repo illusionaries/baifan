@@ -19,19 +19,31 @@ export async function exportNodeToPng(node: HTMLElement, filename: string): Prom
   clone.querySelectorAll('[data-export="omit"]').forEach((el) => el.remove())
   clone.style.cssText = `width:${width}px;height:auto;margin:0`
 
+  // stage 不留内边距：html2canvas 画 <svg> 时把 stage 的 padding 当成了偏移量，
+  // 曲线会整体右移同样的像素（手机导出里直接越过卡片右边框）。留白最后拼到画布上。
   const stage = document.createElement('div')
-  stage.style.cssText = `position:absolute;left:-20000px;top:0;padding:${PADDING}px;background:${BACKGROUND};width:${width + PADDING * 2}px;box-sizing:border-box`
+  stage.style.cssText = `position:absolute;left:-20000px;top:0;background:${BACKGROUND};width:${width}px`
   stage.append(clone)
   document.body.append(stage)
 
   try {
-    const canvas = await html2canvas(stage, {
+    const body = await html2canvas(stage, {
       scale: SCALE,
       backgroundColor: BACKGROUND,
       logging: false,
-      width: width + PADDING * 2,
+      width,
       windowWidth: width + PADDING * 2,
     })
+
+    const pad = PADDING * SCALE
+    const canvas = document.createElement('canvas')
+    canvas.width = body.width + pad * 2
+    canvas.height = body.height + pad * 2
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('canvas 上下文不可用')
+    ctx.fillStyle = BACKGROUND
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(body, pad, pad)
 
     const { promise: png, resolve: onEncoded } = Promise.withResolvers<Blob | null>()
     canvas.toBlob(onEncoded, 'image/png')
